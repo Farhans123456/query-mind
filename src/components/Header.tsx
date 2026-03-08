@@ -16,6 +16,7 @@ const Header = () => {
           <span className="font-semibold text-lg tracking-tight">
             Query<span className="text-primary">Mind</span>
           </span>
+          <span className="font-mono text-xs text-muted-foreground ml-2">(~Made by Farhan)</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Zap className="w-3.5 h-3.5 text-primary" />
