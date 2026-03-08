@@ -1,1 +1,4 @@
 project_id = "qridohexcgrabwtvrolk"
+
+[functions.generate-sql]
+verify_jwt = false

@@ -52,7 +52,7 @@ const Index = () => {
         <div className="space-y-4 pb-8">
           <SchemaEditor schema={schema} onSchemaChange={setSchema} />
           <QueryInput onGenerate={handleGenerate} isLoading={isLoading} />
-          {result && <SqlOutput sql={result.sql} explanation={result.explanation} />}
+          {result && <SqlOutput sql={result.sql} explanation={result.explanation} optimized={result.optimized || undefined} />}
         </div>
 
         <FeatureCards />
