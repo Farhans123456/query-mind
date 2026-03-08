@@ -55,7 +55,7 @@ interface SqlHighlighterProps {
 
 const SqlHighlighter: React.FC<SqlHighlighterProps> = ({ sql }) => {
   return (
-    <pre className="font-mono text-sm leading-relaxed overflow-x-auto p-4 rounded-lg bg-muted/50">
+    <pre className="font-mono text-sm leading-relaxed overflow-x-auto p-4 rounded-lg bg-muted/50 whitespace-pre-wrap break-words">
       <code>{highlightSql(sql)}</code>
     </pre>
   );
