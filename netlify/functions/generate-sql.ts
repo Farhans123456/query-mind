@@ -1,5 +1,5 @@
 import { Context } from "@netlify/functions";
-import { GoogleGenAI } from "@google/genai";
+
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -12,10 +12,8 @@ export default async (req: Request, context: Context) => {
     try {
         const { query, schema } = await req.json();
 
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-
-        const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+        if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured");
 
         const systemPrompt = `You are an expert SQL query generator. Your job is to convert natural language questions into precise, optimized SQL queries.
 
@@ -34,24 +32,40 @@ Rules:
 
 ${schema ? `The user's database schema:\n${schema}` : "No schema provided. Generate a reasonable query based on common table/column naming conventions."}`;
 
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [
-                { role: "user", parts: [{ text: systemPrompt + "\\n\\nUser Query: " + query }] }
-            ],
-            config: {
-                responseMimeType: "application/json",
-            }
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+                "HTTP-Referer": "https://query-buddy.netlify.app",
+                "X-Title": "QueryBuddy",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model: "nousresearch/hermes-3-llama-3.1-405b",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: query },
+                ],
+            }),
         });
 
-        const content = response.text;
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("OpenRouter error:", response.status, errorText);
+            throw new Error(`OpenRouter API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
 
         if (!content) throw new Error("No response from AI");
 
         // Parse the JSON response from the AI
         let parsed;
         try {
-            parsed = JSON.parse(content);
+            // Extract JSON from potential markdown code blocks
+            const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
+            parsed = JSON.parse(jsonMatch[1].trim());
         } catch {
             // Fallback: treat entire response as SQL
             parsed = { sql: content, explanation: "Query generated from your natural language request.", optimized: null };

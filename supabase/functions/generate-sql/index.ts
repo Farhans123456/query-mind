@@ -11,8 +11,8 @@ serve(async (req) => {
   try {
     const { query, schema } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    if (!OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured");
 
     const systemPrompt = `You are an expert SQL query generator. Your job is to convert natural language questions into precise, optimized SQL queries.
 
@@ -31,14 +31,16 @@ Rules:
 
 ${schema ? `The user's database schema:\n${schema}` : "No schema provided. Generate a reasonable query based on common table/column naming conventions."}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://query-buddy.netlify.app", // Useful for OpenRouter analytics
+        "X-Title": "QueryBuddy",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "nousresearch/hermes-3-llama-3.1-405b",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: query },
@@ -47,21 +49,9 @@ ${schema ? `The user's database schema:\n${schema}` : "No schema provided. Gener
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI usage limit reached. Please add credits in your workspace settings." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const text = await response.text();
-      console.error("AI gateway error:", response.status, text);
-      throw new Error("AI gateway error");
+      const errorText = await response.text();
+      console.error("OpenRouter error:", response.status, errorText);
+      throw new Error(`OpenRouter API error: ${response.status}`);
     }
 
     const data = await response.json();
